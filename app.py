@@ -16,6 +16,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from math import radians, sin, cos, sqrt, atan2
+import time
 
 # Load environment variables
 load_dotenv(Path(__file__).parent.parent / '.env')
@@ -38,6 +39,146 @@ CONFIG = {
     "RIDE_START_HOUR": 6,
     "RIDE_END_HOUR": 19,
 }
+
+# Cities with major airports (for flying)
+AIRPORT_CITIES = [
+    {"city": "Philadelphia", "state": "PA", "airport": "PHL", "lat": 39.9526, "lon": -75.1652},
+    {"city": "Washington", "state": "DC", "airport": "DCA", "lat": 38.9072, "lon": -77.0369},
+    {"city": "Boston", "state": "MA", "airport": "BOS", "lat": 42.3601, "lon": -71.0589},
+    {"city": "Charlotte", "state": "NC", "airport": "CLT", "lat": 35.2271, "lon": -80.8431},
+    {"city": "Atlanta", "state": "GA", "airport": "ATL", "lat": 33.7490, "lon": -84.3880},
+    {"city": "Miami", "state": "FL", "airport": "MIA", "lat": 25.7617, "lon": -80.1918},
+    {"city": "Tampa", "state": "FL", "airport": "TPA", "lat": 27.9506, "lon": -82.4572},
+    {"city": "Orlando", "state": "FL", "airport": "MCO", "lat": 28.5383, "lon": -81.3792},
+    {"city": "Raleigh", "state": "NC", "airport": "RDU", "lat": 35.7796, "lon": -78.6382},
+    {"city": "Richmond", "state": "VA", "airport": "RIC", "lat": 37.5407, "lon": -77.4360},
+]
+
+# Driveable cities (no airport required, within ~6 hour drive of Northeast)
+DRIVEABLE_CITIES = [
+    {"city": "Baltimore", "state": "MD", "lat": 39.2904, "lon": -76.6122},
+    {"city": "Annapolis", "state": "MD", "lat": 38.9784, "lon": -76.4922},
+    {"city": "Rehoboth Beach", "state": "DE", "lat": 38.7210, "lon": -75.0760},
+    {"city": "Cape May", "state": "NJ", "lat": 38.9351, "lon": -74.9060},
+    {"city": "Atlantic City", "state": "NJ", "lat": 39.3643, "lon": -74.4229},
+    {"city": "Lancaster", "state": "PA", "lat": 40.0379, "lon": -76.3055},
+    {"city": "Gettysburg", "state": "PA", "lat": 39.8309, "lon": -77.2311},
+    {"city": "Harrisburg", "state": "PA", "lat": 40.2732, "lon": -76.8867},
+    {"city": "Wilmington", "state": "DE", "lat": 39.7391, "lon": -75.5398},
+    {"city": "Norfolk", "state": "VA", "lat": 36.8508, "lon": -76.2859},
+    {"city": "Virginia Beach", "state": "VA", "lat": 36.8529, "lon": -75.9780},
+    {"city": "Charlottesville", "state": "VA", "lat": 38.0293, "lon": -78.4767},
+    {"city": "Asheville", "state": "NC", "lat": 35.5951, "lon": -82.5515},
+    {"city": "Outer Banks", "state": "NC", "lat": 35.9582, "lon": -75.6201},
+    {"city": "Myrtle Beach", "state": "SC", "lat": 33.6891, "lon": -78.8867},
+    {"city": "Charleston", "state": "SC", "lat": 32.7765, "lon": -79.9311},
+    {"city": "Savannah", "state": "GA", "lat": 32.0809, "lon": -81.0912},
+    {"city": "Providence", "state": "RI", "lat": 41.8240, "lon": -71.4128},
+    {"city": "Portland", "state": "ME", "lat": 43.6591, "lon": -70.2568},
+    {"city": "Burlington", "state": "VT", "lat": 44.4759, "lon": -73.2121},
+]
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate distance between two points in miles using Haversine formula."""
+    R = 3959  # Earth's radius in miles
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    return R * c
+
+def estimate_drive_time(distance_miles):
+    """Estimate drive time based on distance. Returns hours and minutes."""
+    # Assume average 50 mph for highway driving with stops
+    hours = distance_miles / 50
+    h = int(hours)
+    m = int((hours - h) * 60)
+    if h == 0:
+        return f"{m} min"
+    elif m == 0:
+        return f"{h} hr"
+    else:
+        return f"{h} hr {m} min"
+
+def check_city_weather(city_info, home_lat, home_lon):
+    """Check if a city has suitable biking weather."""
+    weather_data = get_weather_forecast(city_info['lat'], city_info['lon'])
+    if not weather_data or 'list' not in weather_data:
+        return None
+
+    daily_best = {}
+    for item in weather_data['list']:
+        dt = datetime.fromtimestamp(item['dt'])
+        date_str = dt.strftime('%Y-%m-%d')
+        hour = dt.hour
+
+        if hour < CONFIG["RIDE_START_HOUR"] or hour >= CONFIG["RIDE_END_HOUR"]:
+            continue
+
+        feels_like = item['main']['feels_like']
+        weather_main = item['weather'][0]['main'].lower() if item['weather'] else ''
+
+        has_precip = 'rain' in weather_main or 'drizzle' in weather_main or 'snow' in weather_main
+        is_snow = 'snow' in weather_main
+
+        min_temp = CONFIG["MIN_TEMP_WITH_PRECIP"] if has_precip else CONFIG["MIN_TEMP_NO_PRECIP"]
+        is_suitable = feels_like >= min_temp and not is_snow
+
+        if date_str not in daily_best:
+            daily_best[date_str] = {
+                'date': date_str,
+                'day_name': dt.strftime('%A'),
+                'best_temp': feels_like,
+                'has_suitable': is_suitable,
+            }
+        else:
+            if feels_like > daily_best[date_str]['best_temp']:
+                daily_best[date_str]['best_temp'] = feels_like
+            if is_suitable:
+                daily_best[date_str]['has_suitable'] = True
+
+    suitable_count = sum(1 for d in daily_best.values() if d['has_suitable'])
+    if suitable_count > 0:
+        distance = calculate_distance(home_lat, home_lon, city_info['lat'], city_info['lon'])
+        return {
+            'city': city_info['city'],
+            'state': city_info['state'],
+            'airport': city_info.get('airport'),
+            'distance_miles': round(distance),
+            'drive_time': estimate_drive_time(distance),
+            'suitable_days': suitable_count,
+            'best_temp': max(d['best_temp'] for d in daily_best.values() if d['has_suitable']),
+        }
+    return None
+
+def find_travel_destinations(home_lat, home_lon):
+    """Find closest cities with good biking weather - both driveable and flyable."""
+    drive_destinations = []
+    fly_destinations = []
+
+    # Check driveable cities
+    for city in DRIVEABLE_CITIES:
+        result = check_city_weather(city, home_lat, home_lon)
+        if result:
+            drive_destinations.append(result)
+        time.sleep(0.15)  # Rate limit
+
+    # Check airport cities
+    for city in AIRPORT_CITIES:
+        result = check_city_weather(city, home_lat, home_lon)
+        if result:
+            fly_destinations.append(result)
+        time.sleep(0.15)  # Rate limit
+
+    # Sort by distance
+    drive_destinations.sort(key=lambda x: x['distance_miles'])
+    fly_destinations.sort(key=lambda x: x['distance_miles'])
+
+    return {
+        'drive': drive_destinations[:3],  # Top 3 closest driveable
+        'fly': fly_destinations[:3],      # Top 3 closest with airports
+    }
 
 def init_db():
     """Initialize the SQLite database."""
@@ -176,7 +317,7 @@ def analyze_biking_conditions(weather_data):
 
     return suitable_windows
 
-def generate_email_report(biking_windows, city, state):
+def generate_email_report(biking_windows, city, state, travel_destinations=None):
     """Generate HTML email report for a subscriber."""
     today = datetime.now().strftime('%A, %B %d, %Y')
 
@@ -246,6 +387,69 @@ def generate_email_report(biking_windows, city, state):
         <h2>📊 Summary</h2>
         <p>No ideal biking conditions in the next 5 days. Check back tomorrow!</p>
         """
+
+    # Travel destinations section
+    if travel_destinations:
+        drive_options = travel_destinations.get('drive', [])
+        fly_options = travel_destinations.get('fly', [])
+
+        if drive_options or fly_options:
+            html += """<h2>🗺️ Travel to Ride</h2>"""
+
+            if drive_options:
+                html += """
+                <h3>🚗 Closest Drives</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                    <tr style="background: #27ae60; color: white;">
+                        <th style="padding: 8px; text-align: left;">City</th>
+                        <th style="padding: 8px; text-align: center;">Drive Time</th>
+                        <th style="padding: 8px; text-align: center;">Good Days</th>
+                        <th style="padding: 8px; text-align: center;">Best Temp</th>
+                    </tr>
+                """
+                for i, dest in enumerate(drive_options):
+                    bg = "#f8f9fa" if i % 2 == 0 else "#ffffff"
+                    html += f"""
+                    <tr style="background: {bg};">
+                        <td style="padding: 8px;"><strong>{dest['city']}, {dest['state']}</strong></td>
+                        <td style="padding: 8px; text-align: center;">{dest['drive_time']}</td>
+                        <td style="padding: 8px; text-align: center;">{dest['suitable_days']} days</td>
+                        <td style="padding: 8px; text-align: center;">{dest['best_temp']:.0f}°F</td>
+                    </tr>
+                    """
+                html += "</table>"
+
+                # Highlight closest drive option
+                closest_drive = drive_options[0]
+                html += f"""
+                <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 12px; margin: 10px 0;">
+                    <strong>🚗 Closest Drive:</strong> {closest_drive['city']}, {closest_drive['state']}<br>
+                    <span style="color: #666;">{closest_drive['drive_time']} drive • {closest_drive['suitable_days']} good biking days • Up to {closest_drive['best_temp']:.0f}°F</span>
+                </div>
+                """
+
+            if fly_options:
+                html += """
+                <h3>✈️ Fly & Ride</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                    <tr style="background: #3498db; color: white;">
+                        <th style="padding: 8px; text-align: left;">City</th>
+                        <th style="padding: 8px; text-align: center;">Airport</th>
+                        <th style="padding: 8px; text-align: center;">Good Days</th>
+                        <th style="padding: 8px; text-align: center;">Best Temp</th>
+                    </tr>
+                """
+                for i, dest in enumerate(fly_options):
+                    bg = "#f8f9fa" if i % 2 == 0 else "#ffffff"
+                    html += f"""
+                    <tr style="background: {bg};">
+                        <td style="padding: 8px;"><strong>{dest['city']}, {dest['state']}</strong></td>
+                        <td style="padding: 8px; text-align: center;">{dest['airport']}</td>
+                        <td style="padding: 8px; text-align: center;">{dest['suitable_days']} days</td>
+                        <td style="padding: 8px; text-align: center;">{dest['best_temp']:.0f}°F</td>
+                    </tr>
+                    """
+                html += "</table>"
 
     html += """
         <hr>
@@ -341,11 +545,12 @@ def subscribe():
         # Send welcome email with first forecast
         weather_data = get_weather_forecast(lat, lon)
         biking_windows = analyze_biking_conditions(weather_data)
+        travel_destinations = find_travel_destinations(lat, lon)
 
         good_days = sum(1 for day in biking_windows if day['has_suitable_time'])
         subject = f"🚴 Welcome! {good_days} good biking day(s) this week in {resolved_city or city}!"
 
-        html = generate_email_report(biking_windows, resolved_city or city, state)
+        html = generate_email_report(biking_windows, resolved_city or city, state, travel_destinations)
         send_email(email, subject, html, unsubscribe_token)
 
         flash(f'Success! You\'re subscribed for {resolved_city or city}, {state}. Check your email!', 'success')
@@ -385,7 +590,8 @@ def preview():
 
     weather_data = get_weather_forecast(lat, lon)
     biking_windows = analyze_biking_conditions(weather_data)
-    html = generate_email_report(biking_windows, resolved_city or city, state)
+    travel_destinations = find_travel_destinations(lat, lon)
+    html = generate_email_report(biking_windows, resolved_city or city, state, travel_destinations)
 
     return html.replace('{unsubscribe_url}', '#')
 
@@ -414,6 +620,7 @@ def send_daily_emails():
         try:
             weather_data = get_weather_forecast(sub['lat'], sub['lon'])
             biking_windows = analyze_biking_conditions(weather_data)
+            travel_destinations = find_travel_destinations(sub['lat'], sub['lon'])
 
             good_days = sum(1 for day in biking_windows if day['has_suitable_time'])
 
@@ -422,7 +629,7 @@ def send_daily_emails():
             else:
                 subject = f"🚴 Bike Weather Report for {sub['city']} - No ideal conditions"
 
-            html = generate_email_report(biking_windows, sub['city'], sub['state'])
+            html = generate_email_report(biking_windows, sub['city'], sub['state'], travel_destinations)
 
             if send_email(sub['email'], subject, html, sub['unsubscribe_token']):
                 conn.execute('UPDATE subscribers SET last_email_sent = ? WHERE id = ?',
