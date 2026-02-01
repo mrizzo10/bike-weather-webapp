@@ -14,10 +14,7 @@ services:
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: APP_URL
-        fromService:
-          type: web
-          name: bike-weather-checker
-          property: url
+        sync: false  # Set this to your deployed URL after first deploy
 
   - type: cron
     name: bike-weather-daily-emails
