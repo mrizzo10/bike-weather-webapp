@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: bike-weather-checker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: APP_URL
+        fromService:
+          type: web
+          name: bike-weather-checker
+          property: url
+
+  - type: cron
+    name: bike-weather-daily-emails
+    env: python
+    schedule: "0 11 * * *"  # 6 AM EST (11 UTC)
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py send-emails
+    envVars:
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
