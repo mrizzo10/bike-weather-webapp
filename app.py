@@ -12,9 +12,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from dotenv import load_dotenv
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 from math import radians, sin, cos, sqrt, atan2
 import time
 
@@ -30,10 +29,8 @@ DB_PATH = Path(__file__).parent / 'subscribers.db'
 # Configuration
 CONFIG = {
     "OPENWEATHER_API_KEY": os.environ.get("OPENWEATHER_API_KEY", ""),
+    "SENDGRID_API_KEY": os.environ.get("SENDGRID_API_KEY", ""),
     "EMAIL_FROM": os.environ.get("EMAIL_FROM", ""),
-    "EMAIL_PASSWORD": os.environ.get("EMAIL_PASSWORD", ""),
-    "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
-    "SMTP_PORT": int(os.environ.get("SMTP_PORT", "587")),
     "MIN_TEMP_NO_PRECIP": 33,
     "MIN_TEMP_WITH_PRECIP": 45,
     "RIDE_START_HOUR": 6,
@@ -464,24 +461,22 @@ def generate_email_report(biking_windows, city, state, travel_destinations=None)
     return html
 
 def send_email(to_email, subject, html_content, unsubscribe_token):
-    """Send email to a subscriber."""
+    """Send email to a subscriber using SendGrid."""
     html_content = html_content.replace('{unsubscribe_url}',
         f"{os.environ.get('APP_URL', 'http://localhost:5000')}/unsubscribe/{unsubscribe_token}")
 
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = CONFIG['EMAIL_FROM']
-    msg['To'] = to_email
-
-    html_part = MIMEText(html_content, 'html')
-    msg.attach(html_part)
+    message = Mail(
+        from_email=CONFIG['EMAIL_FROM'],
+        to_emails=to_email,
+        subject=subject,
+        html_content=html_content
+    )
 
     try:
-        with smtplib.SMTP(CONFIG['SMTP_SERVER'], CONFIG['SMTP_PORT']) as server:
-            server.starttls()
-            server.login(CONFIG['EMAIL_FROM'], CONFIG['EMAIL_PASSWORD'])
-            server.sendmail(CONFIG['EMAIL_FROM'], to_email, msg.as_string())
-        return True
+        sg = SendGridAPIClient(CONFIG['SENDGRID_API_KEY'])
+        response = sg.send(message)
+        print(f"Email sent to {to_email}: {response.status_code}")
+        return response.status_code in [200, 201, 202]
     except Exception as e:
         print(f"Error sending email to {to_email}: {e}")
         return False
