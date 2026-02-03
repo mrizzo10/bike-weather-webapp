@@ -5,17 +5,19 @@ A web application that allows users to sign up for daily bike weather emails.
 """
 
 import os
-import sqlite3
 import secrets
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 from math import radians, sin, cos, sqrt, atan2
 import time
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # Load environment variables
 load_dotenv(Path(__file__).parent.parent / '.env')
@@ -23,8 +25,8 @@ load_dotenv(Path(__file__).parent.parent / '.env')
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(16))
 
-# Database path
-DB_PATH = Path(__file__).parent / 'subscribers.db'
+# Database URL from environment (Render provides this automatically)
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 # Configuration
 CONFIG = {
@@ -177,13 +179,18 @@ def find_travel_destinations(home_lat, home_lon):
         'fly': fly_destinations[:3],      # Top 3 closest with airports
     }
 
+def get_db():
+    """Get database connection."""
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    return conn
+
 def init_db():
-    """Initialize the SQLite database."""
-    conn = sqlite3.connect(DB_PATH)
+    """Initialize the PostgreSQL database."""
+    conn = get_db()
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS subscribers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             city TEXT NOT NULL,
             state TEXT NOT NULL,
@@ -199,12 +206,6 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-
-def get_db():
-    """Get database connection."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def geocode_location(city, state, zip_code=None):
     """Convert city/state/zip to lat/lon using OpenWeatherMap geocoding."""
@@ -528,11 +529,12 @@ def subscribe():
 
     # Save to database
     conn = get_db()
+    cur = conn.cursor()
     try:
-        conn.execute('''
+        cur.execute('''
             INSERT INTO subscribers (email, city, state, zip_code, lat, lon,
                                      verification_token, unsubscribe_token, verified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)
         ''', (email, resolved_city or city, state, zip_code, lat, lon,
               verification_token, unsubscribe_token))
         conn.commit()
@@ -553,7 +555,8 @@ def subscribe():
         else:
             flash(f'Subscribed for {resolved_city or city}, {state}! Your first email will arrive tomorrow at 6 AM.', 'success')
 
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
+        conn.rollback()
         flash('You\'re already subscribed! Check your inbox for your daily reports.', 'error')
     finally:
         conn.close()
@@ -564,10 +567,12 @@ def subscribe():
 def unsubscribe(token):
     """Unsubscribe a user."""
     conn = get_db()
-    result = conn.execute('SELECT email, city FROM subscribers WHERE unsubscribe_token = ?', (token,)).fetchone()
+    cur = conn.cursor()
+    cur.execute('SELECT email, city FROM subscribers WHERE unsubscribe_token = %s', (token,))
+    result = cur.fetchone()
 
     if result:
-        conn.execute('DELETE FROM subscribers WHERE unsubscribe_token = ?', (token,))
+        cur.execute('DELETE FROM subscribers WHERE unsubscribe_token = %s', (token,))
         conn.commit()
         flash(f'You\'ve been unsubscribed. Sorry to see you go!', 'success')
     else:
@@ -602,7 +607,9 @@ def list_subscribers():
         return "Unauthorized", 401
 
     conn = get_db()
-    subscribers = conn.execute('SELECT email, city, state, created_at FROM subscribers').fetchall()
+    cur = conn.cursor()
+    cur.execute('SELECT email, city, state, created_at FROM subscribers')
+    subscribers = cur.fetchall()
     conn.close()
 
     return jsonify([dict(s) for s in subscribers])
@@ -610,7 +617,9 @@ def list_subscribers():
 def send_daily_emails():
     """Send daily emails to all subscribers. Run this via cron/scheduler."""
     conn = get_db()
-    subscribers = conn.execute('SELECT * FROM subscribers WHERE verified = 1').fetchall()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM subscribers WHERE verified = 1')
+    subscribers = cur.fetchall()
 
     print(f"Sending daily emails to {len(subscribers)} subscribers...")
 
@@ -630,7 +639,7 @@ def send_daily_emails():
             html = generate_email_report(biking_windows, sub['city'], sub['state'], travel_destinations)
 
             if send_email(sub['email'], subject, html, sub['unsubscribe_token']):
-                conn.execute('UPDATE subscribers SET last_email_sent = ? WHERE id = ?',
+                cur.execute('UPDATE subscribers SET last_email_sent = %s WHERE id = %s',
                            (datetime.now(), sub['id']))
                 conn.commit()
                 print(f"  ✓ Sent to {sub['email']}")
@@ -644,7 +653,14 @@ def send_daily_emails():
     print("Daily email batch complete!")
 
 # Initialize database on startup
-init_db()
+if DATABASE_URL:
+    try:
+        init_db()
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+else:
+    print("Warning: DATABASE_URL not set. Database features disabled.")
 
 if __name__ == '__main__':
     import sys
