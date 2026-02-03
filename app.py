@@ -555,7 +555,7 @@ def subscribe():
         if email_sent:
             flash(f'You\'re all set! Check your inbox for today\'s bike weather report for {resolved_city or city}, {state}. You\'ll get daily updates at 6 AM.', 'success')
         else:
-            flash(f'Subscribed for {resolved_city or city}, {state}! Your first email will arrive tomorrow at 6 AM.', 'success')
+            flash(f'Subscribed for {resolved_city or city}, {state}! Your first email will arrive shortly.', 'success')
 
     except psycopg2.IntegrityError:
         conn.rollback()
