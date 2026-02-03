@@ -616,6 +616,25 @@ def list_subscribers():
 
     return jsonify([dict(s) for s in subscribers])
 
+@app.route('/admin/delete/<email>')
+def admin_delete(email):
+    """Delete a subscriber by email (admin endpoint)."""
+    admin_key = request.args.get('key')
+    if admin_key != os.environ.get('ADMIN_KEY', 'dev-admin-key'):
+        return "Unauthorized", 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM subscribers WHERE email = %s RETURNING email', (email,))
+    deleted = cur.fetchone()
+    conn.commit()
+    conn.close()
+
+    if deleted:
+        return jsonify({"deleted": email})
+    else:
+        return jsonify({"error": "Email not found"}), 404
+
 def send_daily_emails():
     """Send daily emails to all subscribers. Run this via cron/scheduler."""
     conn = get_db()
