@@ -12,8 +12,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from dotenv import load_dotenv
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, To, Content
+import resend
 from math import radians, sin, cos, sqrt, atan2
 import time
 import psycopg2
@@ -34,7 +33,7 @@ if DATABASE_URL.startswith('postgres://'):
 # Configuration
 CONFIG = {
     "OPENWEATHER_API_KEY": os.environ.get("OPENWEATHER_API_KEY", ""),
-    "SENDGRID_API_KEY": os.environ.get("SENDGRID_API_KEY", ""),
+    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY", ""),
     "EMAIL_FROM": os.environ.get("EMAIL_FROM", ""),
     "MIN_TEMP_NO_PRECIP": 33,
     "MIN_TEMP_WITH_PRECIP": 45,
@@ -466,22 +465,21 @@ def generate_email_report(biking_windows, city, state, travel_destinations=None)
     return html
 
 def send_email(to_email, subject, html_content, unsubscribe_token):
-    """Send email to a subscriber using SendGrid."""
+    """Send email to a subscriber using Resend."""
     html_content = html_content.replace('{unsubscribe_url}',
         f"{os.environ.get('APP_URL', 'http://localhost:5000')}/unsubscribe/{unsubscribe_token}")
 
-    message = Mail(
-        from_email=CONFIG['EMAIL_FROM'],
-        to_emails=to_email,
-        subject=subject,
-        html_content=html_content
-    )
+    resend.api_key = CONFIG['RESEND_API_KEY']
 
     try:
-        sg = SendGridAPIClient(CONFIG['SENDGRID_API_KEY'])
-        response = sg.send(message)
-        print(f"Email sent to {to_email}: {response.status_code}")
-        return response.status_code in [200, 201, 202]
+        response = resend.Emails.send({
+            "from": CONFIG['EMAIL_FROM'],
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content
+        })
+        print(f"Email sent to {to_email}: {response}")
+        return response.get('id') is not None
     except Exception as e:
         print(f"Error sending email to {to_email}: {e}")
         return False

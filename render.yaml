@@ -17,7 +17,7 @@ services:
           property: connectionString
       - key: OPENWEATHER_API_KEY
         sync: false
-      - key: SENDGRID_API_KEY
+      - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         sync: false
@@ -41,7 +41,7 @@ services:
           property: connectionString
       - key: OPENWEATHER_API_KEY
         sync: false
-      - key: SENDGRID_API_KEY
+      - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         sync: false
