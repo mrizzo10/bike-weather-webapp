@@ -26,7 +26,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(16))
 
 # Database URL from environment (Render provides this automatically)
+# Render uses 'postgres://' but psycopg2 requires 'postgresql://'
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
 # Configuration
 CONFIG = {
@@ -181,7 +184,8 @@ def find_travel_destinations(home_lat, home_lon):
 
 def get_db():
     """Get database connection."""
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    # Render requires SSL for PostgreSQL connections
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor, sslmode='require')
     return conn
 
 def init_db():
