@@ -56,6 +56,22 @@ python app.py
 
 4. Visit http://localhost:5000
 
+## Testing
+
+Run the test suite before deploying:
+```bash
+python tests.py
+```
+
+Tests cover:
+- Weather analysis logic (temperature thresholds, precipitation, snow)
+- Email generation (content, links, travel section visibility)
+- Distance and drive time calculations
+- City configuration validation
+- Flask routes and form elements
+
+All tests should pass (some may be skipped if no DATABASE_URL is set).
+
 ## Deploying to Render
 
 1. Push code to GitHub
