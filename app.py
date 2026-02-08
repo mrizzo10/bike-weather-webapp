@@ -44,40 +44,87 @@ CONFIG = {
 
 # Cities with major airports (for flying)
 AIRPORT_CITIES = [
+    # Mid-Atlantic
     {"city": "Philadelphia", "state": "PA", "airport": "PHL", "lat": 39.9526, "lon": -75.1652},
     {"city": "Washington", "state": "DC", "airport": "DCA", "lat": 38.9072, "lon": -77.0369},
+    {"city": "Baltimore", "state": "MD", "airport": "BWI", "lat": 39.2904, "lon": -76.6122},
+    {"city": "Richmond", "state": "VA", "airport": "RIC", "lat": 37.5407, "lon": -77.4360},
+    # New England
     {"city": "Boston", "state": "MA", "airport": "BOS", "lat": 42.3601, "lon": -71.0589},
+    # Southeast
     {"city": "Charlotte", "state": "NC", "airport": "CLT", "lat": 35.2271, "lon": -80.8431},
+    {"city": "Raleigh", "state": "NC", "airport": "RDU", "lat": 35.7796, "lon": -78.6382},
     {"city": "Atlanta", "state": "GA", "airport": "ATL", "lat": 33.7490, "lon": -84.3880},
+    {"city": "Charleston", "state": "SC", "airport": "CHS", "lat": 32.7765, "lon": -79.9311},
+    {"city": "Jacksonville", "state": "FL", "airport": "JAX", "lat": 30.3322, "lon": -81.6557},
+    # Florida
     {"city": "Miami", "state": "FL", "airport": "MIA", "lat": 25.7617, "lon": -80.1918},
+    {"city": "Fort Lauderdale", "state": "FL", "airport": "FLL", "lat": 26.1224, "lon": -80.1373},
+    {"city": "West Palm Beach", "state": "FL", "airport": "PBI", "lat": 26.7153, "lon": -80.0534},
     {"city": "Tampa", "state": "FL", "airport": "TPA", "lat": 27.9506, "lon": -82.4572},
     {"city": "Orlando", "state": "FL", "airport": "MCO", "lat": 28.5383, "lon": -81.3792},
-    {"city": "Raleigh", "state": "NC", "airport": "RDU", "lat": 35.7796, "lon": -78.6382},
-    {"city": "Richmond", "state": "VA", "airport": "RIC", "lat": 37.5407, "lon": -77.4360},
+    {"city": "Sarasota", "state": "FL", "airport": "SRQ", "lat": 27.3364, "lon": -82.5307},
+    {"city": "Naples", "state": "FL", "airport": "RSW", "lat": 26.1420, "lon": -81.7948},
+    # Southwest (warm winter options)
+    {"city": "Phoenix", "state": "AZ", "airport": "PHX", "lat": 33.4484, "lon": -112.0740},
+    {"city": "Tucson", "state": "AZ", "airport": "TUS", "lat": 32.2226, "lon": -110.9747},
+    {"city": "San Diego", "state": "CA", "airport": "SAN", "lat": 32.7157, "lon": -117.1611},
+    {"city": "Austin", "state": "TX", "airport": "AUS", "lat": 30.2672, "lon": -97.7431},
+    {"city": "New Orleans", "state": "LA", "airport": "MSY", "lat": 29.9511, "lon": -90.0715},
 ]
 
-# Driveable cities (no airport required, within ~6 hour drive of Northeast)
+# Driveable cities (no airport required, within ~8 hour drive of Northeast)
 DRIVEABLE_CITIES = [
+    # New Jersey Shore
+    {"city": "Atlantic City", "state": "NJ", "lat": 39.3643, "lon": -74.4229},
+    {"city": "Cape May", "state": "NJ", "lat": 38.9351, "lon": -74.9060},
+    {"city": "Long Beach Island", "state": "NJ", "lat": 39.6334, "lon": -74.1310},
+    {"city": "Asbury Park", "state": "NJ", "lat": 40.2201, "lon": -74.0121},
+    {"city": "Sandy Hook", "state": "NJ", "lat": 40.4619, "lon": -73.9863},
+    # Delaware
+    {"city": "Rehoboth Beach", "state": "DE", "lat": 38.7210, "lon": -75.0760},
+    {"city": "Wilmington", "state": "DE", "lat": 39.7391, "lon": -75.5398},
+    {"city": "Lewes", "state": "DE", "lat": 38.7746, "lon": -75.1394},
+    # Maryland
     {"city": "Baltimore", "state": "MD", "lat": 39.2904, "lon": -76.6122},
     {"city": "Annapolis", "state": "MD", "lat": 38.9784, "lon": -76.4922},
-    {"city": "Rehoboth Beach", "state": "DE", "lat": 38.7210, "lon": -75.0760},
-    {"city": "Cape May", "state": "NJ", "lat": 38.9351, "lon": -74.9060},
-    {"city": "Atlantic City", "state": "NJ", "lat": 39.3643, "lon": -74.4229},
+    {"city": "Ocean City", "state": "MD", "lat": 38.3365, "lon": -75.0849},
+    {"city": "Frederick", "state": "MD", "lat": 39.4143, "lon": -77.4105},
+    # Pennsylvania
     {"city": "Lancaster", "state": "PA", "lat": 40.0379, "lon": -76.3055},
     {"city": "Gettysburg", "state": "PA", "lat": 39.8309, "lon": -77.2311},
     {"city": "Harrisburg", "state": "PA", "lat": 40.2732, "lon": -76.8867},
-    {"city": "Wilmington", "state": "DE", "lat": 39.7391, "lon": -75.5398},
+    {"city": "Jim Thorpe", "state": "PA", "lat": 40.8762, "lon": -75.7324},
+    {"city": "New Hope", "state": "PA", "lat": 40.3640, "lon": -74.9513},
+    # Virginia
     {"city": "Norfolk", "state": "VA", "lat": 36.8508, "lon": -76.2859},
     {"city": "Virginia Beach", "state": "VA", "lat": 36.8529, "lon": -75.9780},
     {"city": "Charlottesville", "state": "VA", "lat": 38.0293, "lon": -78.4767},
+    {"city": "Alexandria", "state": "VA", "lat": 38.8048, "lon": -77.0469},
+    {"city": "Shenandoah", "state": "VA", "lat": 38.4793, "lon": -78.8386},
+    # North Carolina
     {"city": "Asheville", "state": "NC", "lat": 35.5951, "lon": -82.5515},
     {"city": "Outer Banks", "state": "NC", "lat": 35.9582, "lon": -75.6201},
+    {"city": "Wilmington", "state": "NC", "lat": 34.2257, "lon": -77.9447},
+    {"city": "Durham", "state": "NC", "lat": 35.9940, "lon": -78.8986},
+    # South Carolina
     {"city": "Myrtle Beach", "state": "SC", "lat": 33.6891, "lon": -78.8867},
     {"city": "Charleston", "state": "SC", "lat": 32.7765, "lon": -79.9311},
+    {"city": "Hilton Head", "state": "SC", "lat": 32.2163, "lon": -80.7526},
+    # Georgia
     {"city": "Savannah", "state": "GA", "lat": 32.0809, "lon": -81.0912},
+    # New England
     {"city": "Providence", "state": "RI", "lat": 41.8240, "lon": -71.4128},
+    {"city": "Newport", "state": "RI", "lat": 41.4901, "lon": -71.3128},
     {"city": "Portland", "state": "ME", "lat": 43.6591, "lon": -70.2568},
     {"city": "Burlington", "state": "VT", "lat": 44.4759, "lon": -73.2121},
+    {"city": "Cape Cod", "state": "MA", "lat": 41.6688, "lon": -70.2962},
+    {"city": "Hartford", "state": "CT", "lat": 41.7658, "lon": -72.6734},
+    {"city": "New Haven", "state": "CT", "lat": 41.3083, "lon": -72.9279},
+    # Hudson Valley / Upstate NY
+    {"city": "Hudson", "state": "NY", "lat": 42.2529, "lon": -73.7910},
+    {"city": "Beacon", "state": "NY", "lat": 41.5048, "lon": -73.9696},
+    {"city": "Rhinebeck", "state": "NY", "lat": 41.9268, "lon": -73.9127},
 ]
 
 def calculate_distance(lat1, lon1, lat2, lon2):
