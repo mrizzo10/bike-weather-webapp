@@ -409,8 +409,9 @@ def generate_email_report(biking_windows, city, state, travel_destinations=None,
         <p>No ideal biking conditions in the next 5 days. Check back tomorrow!</p>
         """
 
-    # Travel destinations section
-    if travel_destinations:
+    # Travel destinations section - only show if not all days are suitable at home
+    all_days_suitable = len(good_days) == len(biking_windows) and len(biking_windows) > 0
+    if travel_destinations and not all_days_suitable:
         drive_options = travel_destinations.get('drive', [])
         fly_options = travel_destinations.get('fly', [])
 
