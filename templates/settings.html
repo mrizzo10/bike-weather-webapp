@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bike Weather Checker - Daily Biking Forecasts</title>
+    <title>Settings - Bike Weather Checker</title>
     <style>
         * {
             box-sizing: border-box;
@@ -48,38 +48,6 @@
             color: #666;
             margin-bottom: 30px;
             font-size: 16px;
-        }
-
-        .features {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-
-        .features h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-
-        .features ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .features li {
-            padding: 8px 0;
-            color: #555;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .features li::before {
-            content: "✓";
-            color: #27ae60;
-            font-weight: bold;
         }
 
         form {
@@ -172,48 +140,7 @@
         }
 
         .flash.error::before {
-            content: "⚠ ";
-        }
-
-        button:disabled {
-            background: #aaa;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .conditions {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-
-        .conditions h3 {
-            color: #2c3e50;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-
-        .conditions p {
-            color: #888;
-            font-size: 13px;
-            line-height: 1.6;
+            content: "! ";
         }
 
         .optional {
@@ -222,33 +149,12 @@
             font-size: 12px;
         }
 
-        footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #888;
-            font-size: 12px;
-        }
-
-        footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        /* Mobile responsiveness */
-        @media (max-width: 480px) {
-            .container {
-                padding: 25px;
-                border-radius: 15px;
-            }
-            h1 {
-                font-size: 24px;
-            }
-            .location-row {
-                grid-template-columns: 1fr;
-            }
-            .features li {
-                font-size: 14px;
-            }
+        .section-title {
+            color: #2c3e50;
+            font-size: 18px;
+            margin: 20px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
         }
 
         .preferences-section {
@@ -326,13 +232,47 @@
             height: 20px;
             cursor: pointer;
         }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+                border-radius: 15px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+            .location-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .email-display {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            color: #666;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">🚴</div>
-        <h1>Bike Weather Checker</h1>
-        <p class="tagline">Get daily emails when the weather is perfect for biking</p>
+        <div class="logo">&#9881;</div>
+        <h1>Your Settings</h1>
+        <p class="tagline">Update your location and riding preferences</p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -342,33 +282,26 @@
             {% endif %}
         {% endwith %}
 
-        <div class="features">
-            <h3>What you'll get:</h3>
-            <ul>
-                <li>Daily 6 AM email with your 5-day bike weather forecast</li>
-                <li>Alerts only when conditions are good for riding</li>
-                <li>Personalized for your exact location</li>
-                <li>Closest city to drive or fly to for cycling weather</li>
-            </ul>
-        </div>
+        <form action="/settings/{{ token }}" method="POST">
+            <h3 class="section-title">Account</h3>
 
-        <form action="/subscribe" method="POST">
             <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                <label>Email Address</label>
+                <div class="email-display">{{ subscriber.email }}</div>
             </div>
+
+            <h3 class="section-title">Location</h3>
 
             <div class="location-row">
                 <div class="form-group">
                     <label for="city">City</label>
-                    <input type="text" id="city" name="city" placeholder="e.g. Eastchester" required>
+                    <input type="text" id="city" name="city" value="{{ subscriber.city }}" required>
                 </div>
                 <div class="form-group">
                     <label for="state">State</label>
                     <select id="state" name="state" required>
-                        <option value="">Select...</option>
                         {% for code, name in states %}
-                            <option value="{{ code }}">{{ code }}</option>
+                            <option value="{{ code }}" {% if code == subscriber.state %}selected{% endif %}>{{ code }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -376,41 +309,34 @@
 
             <div class="form-group">
                 <label for="zip_code">ZIP Code <span class="optional">(optional, for accuracy)</span></label>
-                <input type="text" id="zip_code" name="zip_code" placeholder="e.g. 10709" pattern="[0-9]{5}">
+                <input type="text" id="zip_code" name="zip_code" value="{{ subscriber.zip_code or '' }}" pattern="[0-9]{5}">
             </div>
 
             <div class="preferences-section">
                 <h3>Your Riding Preferences</h3>
 
                 <div class="form-group slider-group">
-                    <label for="min_temp_no_precip">Minimum temperature (no rain): <span id="temp_no_precip_value" class="temp-value">33</span>°F</label>
-                    <input type="range" id="min_temp_no_precip" name="min_temp_no_precip" min="20" max="100" value="33" class="slider">
+                    <label for="min_temp_no_precip">Minimum temperature (no rain): <span id="temp_no_precip_value" class="temp-value">{{ subscriber.min_temp_no_precip or 33 }}</span>&#176;F</label>
+                    <input type="range" id="min_temp_no_precip" name="min_temp_no_precip" min="20" max="100" value="{{ subscriber.min_temp_no_precip or 33 }}" class="slider">
                 </div>
 
                 <div class="form-group slider-group">
-                    <label for="min_temp_with_precip">Minimum temperature (with rain): <span id="temp_with_precip_value" class="temp-value">45</span>°F</label>
-                    <input type="range" id="min_temp_with_precip" name="min_temp_with_precip" min="20" max="100" value="45" class="slider">
+                    <label for="min_temp_with_precip">Minimum temperature (with rain): <span id="temp_with_precip_value" class="temp-value">{{ subscriber.min_temp_with_precip or 45 }}</span>&#176;F</label>
+                    <input type="range" id="min_temp_with_precip" name="min_temp_with_precip" min="20" max="100" value="{{ subscriber.min_temp_with_precip or 45 }}" class="slider">
                 </div>
 
                 <div class="form-group checkbox-group">
                     <label class="checkbox-label">
-                        <input type="checkbox" id="ride_in_snow" name="ride_in_snow" value="1">
+                        <input type="checkbox" id="ride_in_snow" name="ride_in_snow" value="1" {% if subscriber.ride_in_snow %}checked{% endif %}>
                         <span>I'm willing to ride in snow</span>
                     </label>
                 </div>
             </div>
 
-            <button type="submit" id="submit-btn">Get Daily Bike Weather</button>
+            <button type="submit">Save Settings</button>
         </form>
 
         <script>
-            document.querySelector('form').addEventListener('submit', function(e) {
-                const btn = document.getElementById('submit-btn');
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner"></span>Signing you up...';
-            });
-
-            // Update slider value displays
             document.getElementById('min_temp_no_precip').addEventListener('input', function() {
                 document.getElementById('temp_no_precip_value').textContent = this.value;
             });
@@ -419,16 +345,8 @@
             });
         </script>
 
-        <div class="conditions">
-            <h3>How it works:</h3>
-            <p>
-                Set your comfort thresholds above, and we'll only flag riding windows that meet <em>your</em> preferences. Defaults are 33°F (dry) and 45°F (rain).
-            </p>
-        </div>
-
         <footer>
-            Made with love for cyclists everywhere<br>
-            <a href="https://github.com/mrizzo10/bike-weather-checker">View on GitHub</a>
+            <a href="/">Back to Home</a>
         </footer>
     </div>
 </body>
