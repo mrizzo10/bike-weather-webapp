@@ -221,10 +221,9 @@ def init_db():
     ]:
         try:
             c.execute(f'ALTER TABLE subscribers ADD COLUMN {col} INTEGER DEFAULT {default}' if col != 'settings_token' else f'ALTER TABLE subscribers ADD COLUMN {col} TEXT')
+            conn.commit()
         except psycopg2.errors.DuplicateColumn:
-            pass  # Column already exists
-        conn.rollback()  # Clear any error state
-    conn.commit()
+            conn.rollback()  # Clear error state only on failure
     conn.close()
 
 def geocode_location(city, state, zip_code=None):
